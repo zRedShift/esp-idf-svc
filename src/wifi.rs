@@ -396,17 +396,19 @@ impl<'d> WifiDriver<'d> {
         Ok(())
     }
 
-    pub fn is_ap_enabled(&self) -> Result<bool, EspError> {
+    fn get_mode(&self) -> Result<wifi_mode_t, EspError> {
         let mut mode: wifi_mode_t = 0;
         esp!(unsafe { esp_wifi_get_mode(&mut mode) })?;
+        Ok(mode)
+    }
 
+    pub fn is_ap_enabled(&self) -> Result<bool, EspError> {
+        let mode = self.get_mode()?;
         Ok(mode == wifi_mode_t_WIFI_MODE_AP || mode == wifi_mode_t_WIFI_MODE_APSTA)
     }
 
     pub fn is_sta_enabled(&self) -> Result<bool, EspError> {
-        let mut mode: wifi_mode_t = 0;
-        esp!(unsafe { esp_wifi_get_mode(&mut mode) })?;
-
+        let mode = self.get_mode()?;
         Ok(mode == wifi_mode_t_WIFI_MODE_STA || mode == wifi_mode_t_WIFI_MODE_APSTA)
     }
 
@@ -458,8 +460,7 @@ impl<'d> WifiDriver<'d> {
     pub fn get_configuration(&self) -> Result<Configuration, EspError> {
         info!("Getting configuration");
 
-        let mut mode: wifi_mode_t = 0;
-        esp!(unsafe { esp_wifi_get_mode(&mut mode) })?;
+        let mode = self.get_mode()?;
 
         let conf = match mode {
             wifi_mode_t_WIFI_MODE_NULL => Configuration::None,
@@ -478,9 +479,6 @@ impl<'d> WifiDriver<'d> {
 
     pub fn set_configuration(&mut self, conf: &Configuration) -> Result<(), EspError> {
         info!("Setting configuration: {:?}", conf);
-
-        let _ = self.disconnect();
-        let _ = self.stop();
 
         match conf {
             Configuration::None => {
@@ -530,21 +528,13 @@ impl<'d> WifiDriver<'d> {
         let mut ap_infos_raw: heapless::Vec<wifi_ap_record_t, N> = heapless::Vec::new();
 
         let real_count = self.do_get_scan_infos(&mut ap_infos_raw)?;
-
-        unsafe {
-            ap_infos_raw.set_len(real_count);
-        }
-
-        let mut result = heapless::Vec::<_, N>::new();
-        for ap_info_raw in ap_infos_raw.iter().take(real_count) {
+        unsafe { ap_infos_raw.set_len(real_count) };
+        let mut result = heapless::Vec::new();
+        for ap_info_raw in ap_infos_raw.iter() {
             let ap_info: AccessPointInfo = Newtype(ap_info_raw).into();
             info!("Found access point {:?}", ap_info);
-
-            if result.push(ap_info).is_err() {
-                break;
-            }
+            result.push(ap_info).unwrap();
         }
-
         Ok((result, total_count))
     }
 
@@ -636,7 +626,43 @@ impl<'d> WifiDriver<'d> {
         Ok(result)
     }
 
-    fn set_sta_conf(&mut self, conf: &ClientConfiguration) -> Result<(), EspError> {
+    pub fn enable_sta(&mut self) -> Result<(), EspError> {
+        let mode = self.get_mode()?;
+
+        let new_mode = if mode == wifi_mode_t_WIFI_MODE_AP {
+            wifi_mode_t_WIFI_MODE_APSTA
+        } else if mode == wifi_mode_t_WIFI_MODE_NULL {
+            wifi_mode_t_WIFI_MODE_STA
+        } else {
+            return Ok(());
+        };
+
+        unsafe { esp!(esp_wifi_set_mode(new_mode)) }
+    }
+
+    pub fn disable_sta(&mut self) -> Result<(), EspError> {
+        let mode = self.get_mode()?;
+
+        if self.is_sta_started().unwrap_or(false) {
+            let _ = self.disconnect();
+        }
+
+        let new_mode = if mode == wifi_mode_t_WIFI_MODE_APSTA {
+            wifi_mode_t_WIFI_MODE_AP
+        } else if mode == wifi_mode_t_WIFI_MODE_STA {
+            wifi_mode_t_WIFI_MODE_NULL
+        } else {
+            return Ok(());
+        };
+
+        unsafe { esp!(esp_wifi_set_mode(new_mode)) }
+    }
+
+    pub fn set_sta_conf(&mut self, conf: &ClientConfiguration) -> Result<(), EspError> {
+        if self.is_sta_started().unwrap_or(false) {
+            let _ = self.disconnect();
+        }
+
         info!("Setting STA configuration: {:?}", conf);
 
         let mut wifi_config = wifi_config_t {
@@ -661,7 +687,35 @@ impl<'d> WifiDriver<'d> {
         Ok(result)
     }
 
-    fn set_ap_conf(&mut self, conf: &AccessPointConfiguration) -> Result<(), EspError> {
+    pub fn enable_ap(&mut self) -> Result<(), EspError> {
+        let mode = self.get_mode()?;
+
+        let new_mode = if mode == wifi_mode_t_WIFI_MODE_STA {
+            wifi_mode_t_WIFI_MODE_APSTA
+        } else if mode == wifi_mode_t_WIFI_MODE_NULL {
+            wifi_mode_t_WIFI_MODE_AP
+        } else {
+            return Ok(());
+        };
+
+        unsafe { esp!(esp_wifi_set_mode(new_mode)) }
+    }
+
+    pub fn disable_ap(&mut self) -> Result<(), EspError> {
+        let mode = self.get_mode()?;
+
+        let new_mode = if mode == wifi_mode_t_WIFI_MODE_APSTA {
+            wifi_mode_t_WIFI_MODE_STA
+        } else if mode == wifi_mode_t_WIFI_MODE_AP {
+            wifi_mode_t_WIFI_MODE_NULL
+        } else {
+            return Ok(());
+        };
+
+        unsafe { esp!(esp_wifi_set_mode(new_mode)) }
+    }
+
+    pub fn set_ap_conf(&mut self, conf: &AccessPointConfiguration) -> Result<(), EspError> {
         info!("Setting AP configuration: {:?}", conf);
 
         let mut wifi_config = wifi_config_t {

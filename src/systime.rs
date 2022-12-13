@@ -7,7 +7,7 @@ use esp_idf_sys::*;
 pub struct EspSystemTime;
 
 impl EspSystemTime {
-    pub fn now(&self) -> Duration {
+    pub fn now() -> Duration {
         let mut tv_now: timeval = Default::default();
 
         unsafe {
@@ -20,6 +20,6 @@ impl EspSystemTime {
 
 impl SystemTime for EspSystemTime {
     fn now(&self) -> Duration {
-        EspSystemTime::now(self)
+        EspSystemTime::now()
     }
 }
