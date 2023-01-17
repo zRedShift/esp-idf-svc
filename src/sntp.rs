@@ -98,6 +98,7 @@ pub struct SntpConf<'a> {
     pub servers: [&'a str; SNTP_SERVER_NUM],
     pub operating_mode: OperatingMode,
     pub sync_mode: SyncMode,
+    pub sync_cb: sntp_sync_time_cb_t,
 }
 
 impl<'a> Default for SntpConf<'a> {
@@ -111,6 +112,7 @@ impl<'a> Default for SntpConf<'a> {
             servers,
             operating_mode: OperatingMode::Poll,
             sync_mode: SyncMode::Immediate,
+            sync_cb: None,
         }
     }
 }
@@ -154,7 +156,7 @@ impl EspSntp {
         }
 
         unsafe {
-            sntp_set_time_sync_notification_cb(Some(Self::sync_cb));
+            sntp_set_time_sync_notification_cb(Some(conf.sync_cb.unwrap_or(Self::sync_cb)));
             sntp_init();
         };
 

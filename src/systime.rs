@@ -10,7 +10,7 @@ pub struct EspSystemTime;
 
 impl EspSystemTime {
     /// Return the current system time
-    pub fn now(&self) -> Duration {
+    pub fn now() -> Duration {
         let mut tv_now: timeval = Default::default();
 
         unsafe {
@@ -23,6 +23,6 @@ impl EspSystemTime {
 
 impl SystemTime for EspSystemTime {
     fn now(&self) -> Duration {
-        EspSystemTime::now(self)
+        EspSystemTime::now()
     }
 }

@@ -289,6 +289,7 @@ impl EspHttpServer {
             }
         }
 
+        #[cfg(not(esp_idf_esp_https_server_enable))]
         info!("Started Httpd server with config {:?}", conf);
 
         let server = EspHttpServer {
@@ -1017,10 +1018,9 @@ pub mod ws {
         #[allow(non_upper_case_globals)]
         fn create_frame_type(raw_frame: &httpd_ws_frame_t) -> (FrameType, usize) {
             match raw_frame.type_ {
-                httpd_ws_type_t_HTTPD_WS_TYPE_TEXT => (
-                    FrameType::Text(raw_frame.fragmented),
-                    raw_frame.len as usize + 1,
-                ),
+                httpd_ws_type_t_HTTPD_WS_TYPE_TEXT => {
+                    (FrameType::Text(raw_frame.fragmented), raw_frame.len + 1)
+                }
                 httpd_ws_type_t_HTTPD_WS_TYPE_BINARY => {
                     (FrameType::Binary(raw_frame.fragmented), raw_frame.len as _)
                 }
