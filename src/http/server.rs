@@ -1265,7 +1265,7 @@ pub mod ws {
         {
             warn!("Unhandled internal error [{:?}]:\n{:?}", error, error);
 
-            ESP_OK as _
+            ESP_FAIL as _
         }
 
         fn to_native_ws_handler<H, E>(
