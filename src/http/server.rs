@@ -289,6 +289,7 @@ impl EspHttpServer {
             }
         }
 
+        #[cfg(not(esp_idf_esp_https_server_enable))]
         info!("Started Httpd server with config {:?}", conf);
 
         let server = EspHttpServer {

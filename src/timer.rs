@@ -397,7 +397,7 @@ pub mod embassy_time {
                 let mut id = {
                     let _guard = self.cs.enter();
 
-                    self.alarms.get().as_mut().unwrap().len() as u8
+                    (*self.alarms.get()).len() as u8
                 };
 
                 if (id as usize) < MAX_ALARMS {
@@ -406,16 +406,13 @@ pub mod embassy_time {
                     {
                         let _guard = self.cs.enter();
 
-                        id = self.alarms.get().as_mut().unwrap().len() as u8;
+                        id = (*self.alarms.get()).len() as u8;
 
                         if (id as usize) == MAX_ALARMS {
                             return None;
                         }
 
-                        self.alarms
-                            .get()
-                            .as_mut()
-                            .unwrap()
+                        (*self.alarms.get())
                             .push(alarm)
                             .unwrap_or_else(|_| unreachable!());
                     }
@@ -427,13 +424,13 @@ pub mod embassy_time {
             }
 
             fn set_alarm_callback(&self, handle: AlarmHandle, callback: fn(*mut ()), ctx: *mut ()) {
-                let alarm = unsafe { &self.alarms.get().as_mut().unwrap()[handle.id() as usize] };
+                let alarm = unsafe { &(*self.alarms.get())[handle.id() as usize] };
 
                 alarm.set_callback(callback, ctx);
             }
 
             fn set_alarm(&self, handle: AlarmHandle, timestamp: u64) -> bool {
-                let alarm = unsafe { &self.alarms.get().as_mut().unwrap()[handle.id() as usize] };
+                let alarm = unsafe { &(*self.alarms.get())[handle.id() as usize] };
 
                 let now = self.now();
 

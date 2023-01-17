@@ -175,21 +175,17 @@ impl EspHttpConnection {
         self.assert_response();
 
         if name.eq_ignore_ascii_case("Content-Length") {
-            if let Some(content_len_opt) =
-                unsafe { self.content_len_header.get().as_mut().unwrap() }.as_ref()
-            {
-                content_len_opt.as_ref().map(|s| s.as_str())
+            let content_len_header = unsafe { &mut *self.content_len_header.get() };
+            if content_len_header.is_some() {
+                return content_len_header.as_ref().and_then(|s| s.as_deref());
+            }
+            let content_len = unsafe { esp_http_client_get_content_length(self.raw_client) };
+            if content_len >= 0 {
+                content_len_header
+                    .insert(Some(content_len.to_string()))
+                    .as_deref()
             } else {
-                let content_len = unsafe { esp_http_client_get_content_length(self.raw_client) };
-                *unsafe { self.content_len_header.get().as_mut().unwrap() } = if content_len >= 0 {
-                    Some(Some(content_len.to_string()))
-                } else {
-                    None
-                };
-
-                unsafe { self.content_len_header.get().as_mut().unwrap() }
-                    .as_ref()
-                    .and_then(|s| s.as_ref().map(|s| s.as_ref()))
+                None
             }
         } else {
             self.headers.get(UncasedStr::new(name)).map(|s| s.as_str())
