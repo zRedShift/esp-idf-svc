@@ -175,6 +175,7 @@ impl From<&ClientConfiguration> for Newtype<wifi_sta_config_t> {
                 capable: false,
                 required: false,
             },
+            failure_retry_cnt: 5,
             ..Default::default()
         };
 
