@@ -77,6 +77,10 @@ pub struct Configuration {
     pub buffer_size_tx: Option<usize>,
     pub timeout: Option<core::time::Duration>,
     pub follow_redirects_policy: FollowRedirectsPolicy,
+    pub keep_alive_enable: bool,
+    pub keep_alive_idle: i32,
+    pub keep_alive_interval: i32,
+    pub keep_alive_count: i32,
     pub client_certificate: Option<X509<'static>>,
     pub private_key: Option<X509<'static>>,
 
@@ -117,8 +121,10 @@ impl EspHttpConnection {
 
             use_global_ca_store: configuration.use_global_ca_store,
             #[cfg(not(esp_idf_version = "4.3"))]
-            crt_bundle_attach: configuration.crt_bundle_attach,
-
+            keep_alive_enable: configuration.keep_alive_enable,
+            keep_alive_idle: configuration.keep_alive_idle,
+            keep_alive_interval: configuration.keep_alive_interval,
+            keep_alive_count: configuration.keep_alive_count,
             ..Default::default()
         };
 
