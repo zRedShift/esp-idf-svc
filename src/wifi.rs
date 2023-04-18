@@ -388,7 +388,7 @@ impl<'d> WifiDriver<'d> {
                 WifiEvent::StaStarted => guard.0 = WifiEvent::StaStarted,
                 WifiEvent::StaStopped => guard.0 = WifiEvent::StaStopped,
                 WifiEvent::StaConnected => guard.0 = WifiEvent::StaConnected,
-                WifiEvent::StaDisconnected => guard.0 = WifiEvent::StaDisconnected,
+                WifiEvent::StaDisconnected(data) => guard.0 = WifiEvent::StaDisconnected(*data),
                 _ => (),
             };
         })?;
@@ -503,9 +503,10 @@ impl<'d> WifiDriver<'d> {
     pub fn is_sta_started(&self) -> Result<bool, EspError> {
         let guard = self.status.lock();
 
-        Ok(guard.0 == WifiEvent::StaStarted
-            || guard.0 == WifiEvent::StaConnected
-            || guard.0 == WifiEvent::StaDisconnected)
+        Ok(matches!(
+            guard.0,
+            WifiEvent::StaStarted | WifiEvent::StaConnected | WifiEvent::StaDisconnected(_)
+        ))
     }
 
     pub fn is_sta_connected(&self) -> Result<bool, EspError> {
@@ -1258,6 +1259,158 @@ impl<'d> Wifi for EspWifi<'d> {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum WifiReasonCode {
+    Unspecified,
+    AuthExpire,
+    AuthLeave,
+    AssocExpire,
+    AssocToomany,
+    NotAuthed,
+    NotAssoced,
+    AssocLeave,
+    AssocNotAuthed,
+    DisassocPwrcapBad,
+    DisassocSupchanBad,
+    BssTransitionDisassoc,
+    IeInvalid,
+    MicFailure,
+    FourWayHandshakeTimeout,
+    GroupKeyUpdateTimeout,
+    IeIn4wayDiffers,
+    GroupCipherInvalid,
+    PairwiseCipherInvalid,
+    AkmpInvalid,
+    UnsuppRsnIeVersion,
+    InvalidRsnIeCap,
+    AuthFailed8021x,
+    CipherSuiteRejected,
+    TdlsPeerUnreachable,
+    TdlsUnspecified,
+    SspRequestedDisassoc,
+    NoSspRoamingAgreement,
+    BadCipherOrAkm,
+    NotAuthorizedThisLocation,
+    ServiceChangePercludesTs,
+    UnspecifiedQos,
+    NotEnoughBandwidth,
+    MissingAcks,
+    ExceededTxop,
+    StaLeaving,
+    EndBa,
+    UnknownBa,
+    Timeout,
+    PeerInitiated,
+    ApInitiated,
+    InvalidFtActionFrameCount,
+    InvalidPmkid,
+    InvalidMde,
+    InvalidFte,
+    TransmissionLinkEstablishFailed,
+    AlterativeChannelOccupied,
+    BeaconTimeout,
+    NoApFound,
+    AuthFail,
+    AssocFail,
+    HandshakeTimeout,
+    ConnectionFail,
+    ApTsfReset,
+    Roaming,
+    AssocComebackTimeTooLong,
+}
+
+impl From<u32> for WifiReasonCode {
+    #[allow(non_upper_case_globals, non_snake_case, non_camel_case_types)]
+    fn from(value: u32) -> Self {
+        match value {
+            wifi_err_reason_t_WIFI_REASON_UNSPECIFIED => Self::Unspecified,
+            wifi_err_reason_t_WIFI_REASON_AUTH_EXPIRE => Self::AuthExpire,
+            wifi_err_reason_t_WIFI_REASON_AUTH_LEAVE => Self::AuthLeave,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_EXPIRE => Self::AssocExpire,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_TOOMANY => Self::AssocToomany,
+            wifi_err_reason_t_WIFI_REASON_NOT_AUTHED => Self::NotAuthed,
+            wifi_err_reason_t_WIFI_REASON_NOT_ASSOCED => Self::NotAssoced,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_LEAVE => Self::AssocLeave,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_NOT_AUTHED => Self::AssocNotAuthed,
+            wifi_err_reason_t_WIFI_REASON_DISASSOC_PWRCAP_BAD => Self::DisassocPwrcapBad,
+            wifi_err_reason_t_WIFI_REASON_DISASSOC_SUPCHAN_BAD => Self::DisassocSupchanBad,
+            wifi_err_reason_t_WIFI_REASON_BSS_TRANSITION_DISASSOC => Self::BssTransitionDisassoc,
+            wifi_err_reason_t_WIFI_REASON_IE_INVALID => Self::IeInvalid,
+            wifi_err_reason_t_WIFI_REASON_MIC_FAILURE => Self::MicFailure,
+            wifi_err_reason_t_WIFI_REASON_4WAY_HANDSHAKE_TIMEOUT => Self::FourWayHandshakeTimeout,
+            wifi_err_reason_t_WIFI_REASON_GROUP_KEY_UPDATE_TIMEOUT => Self::GroupKeyUpdateTimeout,
+            wifi_err_reason_t_WIFI_REASON_IE_IN_4WAY_DIFFERS => Self::IeIn4wayDiffers,
+            wifi_err_reason_t_WIFI_REASON_GROUP_CIPHER_INVALID => Self::GroupCipherInvalid,
+            wifi_err_reason_t_WIFI_REASON_PAIRWISE_CIPHER_INVALID => Self::PairwiseCipherInvalid,
+            wifi_err_reason_t_WIFI_REASON_AKMP_INVALID => Self::AkmpInvalid,
+            wifi_err_reason_t_WIFI_REASON_UNSUPP_RSN_IE_VERSION => Self::UnsuppRsnIeVersion,
+            wifi_err_reason_t_WIFI_REASON_INVALID_RSN_IE_CAP => Self::InvalidRsnIeCap,
+            wifi_err_reason_t_WIFI_REASON_802_1X_AUTH_FAILED => Self::AuthFailed8021x,
+            wifi_err_reason_t_WIFI_REASON_CIPHER_SUITE_REJECTED => Self::CipherSuiteRejected,
+            wifi_err_reason_t_WIFI_REASON_TDLS_PEER_UNREACHABLE => Self::TdlsPeerUnreachable,
+            wifi_err_reason_t_WIFI_REASON_TDLS_UNSPECIFIED => Self::TdlsUnspecified,
+            wifi_err_reason_t_WIFI_REASON_SSP_REQUESTED_DISASSOC => Self::SspRequestedDisassoc,
+            wifi_err_reason_t_WIFI_REASON_NO_SSP_ROAMING_AGREEMENT => Self::NoSspRoamingAgreement,
+            wifi_err_reason_t_WIFI_REASON_BAD_CIPHER_OR_AKM => Self::BadCipherOrAkm,
+            wifi_err_reason_t_WIFI_REASON_NOT_AUTHORIZED_THIS_LOCATION => {
+                Self::NotAuthorizedThisLocation
+            }
+            wifi_err_reason_t_WIFI_REASON_SERVICE_CHANGE_PERCLUDES_TS => {
+                Self::ServiceChangePercludesTs
+            }
+            wifi_err_reason_t_WIFI_REASON_UNSPECIFIED_QOS => Self::UnspecifiedQos,
+            wifi_err_reason_t_WIFI_REASON_NOT_ENOUGH_BANDWIDTH => Self::NotEnoughBandwidth,
+            wifi_err_reason_t_WIFI_REASON_MISSING_ACKS => Self::MissingAcks,
+            wifi_err_reason_t_WIFI_REASON_EXCEEDED_TXOP => Self::ExceededTxop,
+            wifi_err_reason_t_WIFI_REASON_STA_LEAVING => Self::StaLeaving,
+            wifi_err_reason_t_WIFI_REASON_END_BA => Self::EndBa,
+            wifi_err_reason_t_WIFI_REASON_UNKNOWN_BA => Self::UnknownBa,
+            wifi_err_reason_t_WIFI_REASON_TIMEOUT => Self::Timeout,
+            wifi_err_reason_t_WIFI_REASON_PEER_INITIATED => Self::PeerInitiated,
+            wifi_err_reason_t_WIFI_REASON_AP_INITIATED => Self::ApInitiated,
+            wifi_err_reason_t_WIFI_REASON_INVALID_FT_ACTION_FRAME_COUNT => {
+                Self::InvalidFtActionFrameCount
+            }
+            wifi_err_reason_t_WIFI_REASON_INVALID_PMKID => Self::InvalidPmkid,
+            wifi_err_reason_t_WIFI_REASON_INVALID_MDE => Self::InvalidMde,
+            wifi_err_reason_t_WIFI_REASON_INVALID_FTE => Self::InvalidFte,
+            wifi_err_reason_t_WIFI_REASON_TRANSMISSION_LINK_ESTABLISH_FAILED => {
+                Self::TransmissionLinkEstablishFailed
+            }
+            wifi_err_reason_t_WIFI_REASON_ALTERATIVE_CHANNEL_OCCUPIED => {
+                Self::AlterativeChannelOccupied
+            }
+            wifi_err_reason_t_WIFI_REASON_BEACON_TIMEOUT => Self::BeaconTimeout,
+            wifi_err_reason_t_WIFI_REASON_NO_AP_FOUND => Self::NoApFound,
+            wifi_err_reason_t_WIFI_REASON_AUTH_FAIL => Self::AuthFail,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_FAIL => Self::AssocFail,
+            wifi_err_reason_t_WIFI_REASON_HANDSHAKE_TIMEOUT => Self::HandshakeTimeout,
+            wifi_err_reason_t_WIFI_REASON_CONNECTION_FAIL => Self::ConnectionFail,
+            wifi_err_reason_t_WIFI_REASON_AP_TSF_RESET => Self::ApTsfReset,
+            wifi_err_reason_t_WIFI_REASON_ROAMING => Self::Roaming,
+            wifi_err_reason_t_WIFI_REASON_ASSOC_COMEBACK_TIME_TOO_LONG => {
+                Self::AssocComebackTimeTooLong
+            }
+            _ => Self::Unspecified,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct StaDisconnectedData {
+    pub reason: WifiReasonCode,
+    pub rssi: i8,
+}
+
+impl From<wifi_event_sta_disconnected_t> for StaDisconnectedData {
+    fn from(value: wifi_event_sta_disconnected_t) -> Self {
+        Self {
+            reason: (value.reason as u32).into(),
+            rssi: value.rssi,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum WifiEvent {
     Ready,
 
@@ -1267,7 +1420,7 @@ pub enum WifiEvent {
     StaStarted,
     StaStopped,
     StaConnected,
-    StaDisconnected,
+    StaDisconnected(Option<StaDisconnectedData>),
     StaAuthmodeChanged,
     StaBssRssiLow,
     StaBeaconTimeout,
@@ -1313,7 +1466,13 @@ impl EspTypedEventDeserializer<WifiEvent> for WifiEvent {
         } else if event_id == wifi_event_t_WIFI_EVENT_STA_CONNECTED {
             WifiEvent::StaConnected
         } else if event_id == wifi_event_t_WIFI_EVENT_STA_DISCONNECTED {
-            WifiEvent::StaDisconnected
+            let evt_data: Option<StaDisconnectedData> = if data.payload.is_null() {
+                None
+            } else {
+                let evt_data: wifi_event_sta_disconnected_t = unsafe { *data.payload.cast() };
+                Some(evt_data.into())
+            };
+            WifiEvent::StaDisconnected(evt_data.into())
         } else if event_id == wifi_event_t_WIFI_EVENT_STA_AUTHMODE_CHANGE {
             WifiEvent::StaAuthmodeChanged
         } else if event_id == wifi_event_t_WIFI_EVENT_STA_WPS_ER_SUCCESS {
@@ -1405,7 +1564,7 @@ impl WifiWait {
                 | WifiEvent::StaStarted
                 | WifiEvent::StaStopped
                 | WifiEvent::StaConnected
-                | WifiEvent::StaDisconnected
+                | WifiEvent::StaDisconnected(_)
         ) {
             waitable.cvar.notify_all();
         }
