@@ -577,10 +577,13 @@ impl<'d> WifiDriver<'d> {
     pub fn is_sta_started(&self) -> Result<bool, EspError> {
         let guard = self.status.lock();
 
-        Ok(guard.0 == WifiEvent::StaStarted
-            || guard.0 == WifiEvent::StaConnected
-            || guard.0 == WifiEvent::ScanDone
-            || guard.0 == WifiEvent::StaDisconnected(_))
+        Ok(matches!(
+            guard.0,
+            WifiEvent::StaStarted
+                | WifiEvent::StaConnected
+                | WifiEvent::ScanDone
+                | WifiEvent::StaDisconnected(_)
+        ))
     }
 
     pub fn is_sta_connected(&self) -> Result<bool, EspError> {
