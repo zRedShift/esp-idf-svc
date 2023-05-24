@@ -988,8 +988,6 @@ impl<'d> WifiDriver<'d> {
         unsafe { esp!(esp_wifi_set_mode(new_mode)) }
     }
 
-
-    fn set_sta_conf(&mut self, conf: &ClientConfiguration) -> Result<(), EspError> {
     pub fn set_sta_conf(&mut self, conf: &ClientConfiguration) -> Result<(), EspError> {
         debug!("Checking current STA configuration");
         let current_config = self.get_sta_conf()?;
@@ -1015,12 +1013,6 @@ impl<'d> WifiDriver<'d> {
         debug!("STA configuration done");
 
         Ok(())
-    }
-
-    pub fn get_ap_info(&self) -> Result<AccessPointInfo, EspError> {
-        let mut ap_info_raw = Default::default();
-        esp!(unsafe { esp_wifi_sta_get_ap_info(&mut ap_info_raw) })?;
-        Ok(Newtype(&ap_info_raw).into())
     }
 
     fn get_ap_conf(&self) -> Result<AccessPointConfiguration, EspError> {
